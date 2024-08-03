@@ -1,76 +1,162 @@
--- Kill Aura Script with GUI
+<style>
+#comments-section {
+  background-color: #1c1c1c;
+  color: #ffffff;
+  padding: 20px;
+  border-radius: 15px;
+  max-width: 700px;
+  margin: 20px auto;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+#comments-section h2 {
+  color: #00bfff;
+  text-align: center;
+  margin-bottom: 25px;
+  font-size: 24px;
+  border-bottom: 2px solid #00bfff;
+  padding-bottom: 10px;
+}
 
-local lp = Players.LocalPlayer
-local Run = true
+#comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
 
-local function IsAlive(Humanoid)
-    return Humanoid and Humanoid.Health > 0
-end
+#comment-input {
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  background-color: #2e2e2e;
+  color: #ffffff;
+  font-size: 16px;
+  resize: none;
+  height: 120px;
+  box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.6);
+  transition: all 0.3s ease;
+}
 
-local function GetTouchInterest(Tool)
-    return Tool and Tool:FindFirstChildWhichIsA("TouchTransmitter", true)
-end
+#comment-input:focus {
+  outline: none;
+  background-color: #3e3e3e;
+}
 
-local function Attack(Tool, TouchPart, ToTouch)
-    if Tool:IsDescendantOf(workspace) then
-        Tool:Activate()
-        firetouchinterest(TouchPart, ToTouch, 1)
-        firetouchinterest(TouchPart, ToTouch, 0)
-    end
-end
+#comment-form button {
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  background-color: #00bfff;
+  color: #ffffff;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
 
--- GUI Setup
-local gui = Instance.new("ScreenGui")
-gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+#comment-form button:hover {
+  background-color: #009acd;
+  transform: translateY(-2px);
+}
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 100, 0, 50)
-frame.Position = UDim2.new(0, 10, 0, 10)
-frame.BackgroundColor3 = Color3.new(0, 0, 0)
-frame.BackgroundTransparency = 0.5
-frame.Parent = gui
+#comments-list {
+  margin-top: 30px;
+  max-height: 350px;
+  overflow-y: auto;
+}
 
-local toggleButton = Instance.new("TextButton")
-toggleButton.Text = "Kill Aura: OFF"
-toggleButton.TextSize = 14
-toggleButton.Size = UDim2.new(0, 100, 0, 50)
-toggleButton.Parent = frame
+.comment {
+  background-color: #292b2c;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease;
+}
 
-local function ToggleAura()
-    Run = not Run
-    toggleButton.Text = "Kill Aura: " .. (Run and "ON" or "OFF")
-end
+.comment:hover {
+  transform: translateY(-5px);
+}
 
-toggleButton.MouseButton1Click:Connect(ToggleAura)
+.comment p {
+  margin: 0;
+}
 
-while Run do
-    local char = lp.Character
-    if IsAlive(char:FindFirstChildOfClass("Humanoid")) then
-        local tool = char:FindFirstChildOfClass("Tool")
-        local touchInterest = tool and GetTouchInterest(tool)
+.comment-time {
+  font-size: 0.85em;
+  color: #b0b3b8;
+  margin-top: 15px;
+  text-align: right;
+}
 
-        if touchInterest then
-            local touchPart = touchInterest.Parent
-            local instancesInBox = workspace:FindPartsInRegion3(touchPart.Position - getgenv().configs.Size / 2, touchPart.Position + getgenv().configs.Size / 2, nil, math.huge)
+ </style>
 
-            for _, v in ipairs(instancesInBox) do
-                local character = v.Parent
+<html>
+<div id="comments-section">
+  <h2>Comentarios</h2>
+  <form id="comment-form">
+    <textarea id="comment-input" placeholder="Escribe tu comentario aquí..." required></textarea>
+    <button type="submit">Enviar</button>
+  </form>
+  <div id="comments-list">
+    <!-- Los comentarios se mostrarán aquí -->
+  </div>
+</div>
 
-                if character:IsA("Model") and character ~= char then
-                    local humanoid = character:FindFirstChildOfClass("Humanoid")
+ </html>
 
-                    if humanoid and (not getgenv().configs.DeathCheck or IsAlive(humanoid)) then
-                        Attack(tool, touchPart, v)
-                    end
-                end
-            end
-        end
-    end
+<script>
 
-    RunService.Heartbeat:Wait()
-end
+  document.addEventListener('DOMContentLoaded', (event) => {
+    loadComments();
+  });
 
+  document.getElementById('comment-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const commentInput = document.getElementById('comment-input');
+    const commentText = commentInput.value;
+    const commentTime = new Date().toLocaleString();
+    
+    const comment = {
+      text: commentText,
+      time: commentTime
+    };
+
+    saveComment(comment);
+    displayComment(comment);
+    commentInput.value = '';
+  });
+
+  function saveComment(comment) {
+    let comments = JSON.parse(localStorage.getItem('comments')) || [];
+    comments.push(comment);
+    localStorage.setItem('comments', JSON.stringify(comments));
+  }
+
+  function loadComments() {
+    let comments = JSON.parse(localStorage.getItem('comments')) || [];
+    comments.forEach(comment => {
+      displayComment(comment);
+    });
+  }
+
+  function displayComment(comment) {
+    const commentElement = document.createElement('div');
+    commentElement.className = 'comment';
+    
+    const commentContent = document.createElement('p');
+    commentContent.textContent = comment.text;
+    
+    const commentTimeElement = document.createElement('p');
+    commentTimeElement.className = 'comment-time';
+    commentTimeElement.textContent = `Enviado el: ${comment.time}`;
+    
+    commentElement.appendChild(commentContent);
+    commentElement.appendChild(commentTimeElement);
+    
+    document.getElementById('comments-list').appendChild(commentElement);
+  }
+
+</script>
